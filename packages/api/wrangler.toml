@@ -1,0 +1,14 @@
+name = "agent-intelligence-network"
+main = "src/index.ts"
+compatibility_date = "2024-12-18"
+compatibility_flags = ["nodejs_compat"]
+
+# Free tier settings
+[limits]
+cpu_ms = 10
+
+# Environment variables (set via wrangler secret)
+# No secrets stored in code - BYOK model
+
+[observability]
+enabled = true

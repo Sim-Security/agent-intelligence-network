@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Intelligence Network</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface-2: #1a1a24;
+      --border: #2a2a3a;
+      --text: #e4e4e7;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-dim: #4f46e5;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #ef4444;
+    }
+
+    body {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--error);
+    }
+
+    .status-dot.connected { background: var(--success); }
+
+    .config-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .config-section h2 {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .input-group label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    input, select, textarea {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.75rem;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.875rem;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    .agents-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .agents-panel h2 {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .agent-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .agent-card:hover, .agent-card.active {
+      border-color: var(--accent);
+    }
+
+    .agent-card h3 {
+      font-size: 0.875rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .agent-card p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .agent-card .capabilities {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .capability-tag {
+      font-size: 0.625rem;
+      background: var(--accent-dim);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 3px;
+    }
+
+    .interaction-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .interaction-header {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .interaction-header h2 {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .budget-display {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .budget-display span { color: var(--success); }
+
+    .messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      max-height: 400px;
+      min-height: 300px;
+    }
+
+    .message {
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: var(--surface-2);
+      border-radius: 6px;
+      border-left: 3px solid var(--border);
+    }
+
+    .message.user { border-left-color: var(--accent); }
+    .message.agent { border-left-color: var(--success); }
+    .message.error { border-left-color: var(--error); }
+
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .message-content {
+      font-size: 0.875rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .message-content code {
+      background: var(--bg);
+      padding: 0.125rem 0.25rem;
+      border-radius: 3px;
+      font-size: 0.8125rem;
+    }
+
+    .input-section {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .method-select {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .method-btn {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.5rem 1rem;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .method-btn:hover, .method-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .query-input {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .query-input textarea {
+      flex: 1;
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .send-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 4px;
+      padding: 0.75rem 1.5rem;
+      color: white;
+      font-family: inherit;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .send-btn:hover { background: var(--accent-dim); }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 3rem;
+    }
+
+    .json-result {
+      background: var(--bg);
+      border-radius: 4px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-size: 0.8125rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1><span>AIN</span> Agent Intelligence Network</h1>
+      <div class="status">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Disconnected</span>
+      </div>
+    </header>
+
+    <section class="config-section">
+      <h2>Configuration</h2>
+      <div class="config-grid">
+        <div class="input-group">
+          <label>API Endpoint</label>
+          <input type="text" id="apiEndpoint" value="http://localhost:8787" placeholder="http://localhost:8787">
+        </div>
+        <div class="input-group">
+          <label>OpenRouter API Key</label>
+          <input type="password" id="apiKey" placeholder="sk-or-v1-...">
+        </div>
+        <div class="input-group">
+          <label>Model</label>
+          <select id="modelSelect">
+            <option value="xiaomi/mimo-v2-flash:free">Free - MiMo V2 Flash</option>
+            <option value="x-ai/grok-4.1-fast">Grok 4.1 Fast (Cheap & Powerful)</option>
+            <option value="google/gemini-3-flash-preview">Gemini Flash 3 (Fast & Powerful)</option>
+            <option value="custom">Custom Model...</option>
+          </select>
+          <input type="text" id="customModel" placeholder="e.g., anthropic/claude-3-opus" style="display:none; margin-top:0.5rem;">
+        </div>
+        <div class="input-group">
+          <label>Budget Limit ($)</label>
+          <input type="number" id="budgetLimit" value="0.10" min="0.01" max="10" step="0.01">
+        </div>
+      </div>
+    </section>
+
+    <div class="main-grid">
+      <aside class="agents-panel">
+        <h2>Available Agents</h2>
+        <div id="agentsList">
+          <div class="agent-card active" data-agent="scout">
+            <h3>Scout Agent</h3>
+            <p>Monitors sources and searches for information</p>
+            <div class="capabilities">
+              <span class="capability-tag">search</span>
+              <span class="capability-tag">monitor</span>
+            </div>
+          </div>
+          <div class="agent-card" data-agent="analyst">
+            <h3>Analyst Agent</h3>
+            <p>Performs deep analysis and generates insights</p>
+            <div class="capabilities">
+              <span class="capability-tag">analyze</span>
+              <span class="capability-tag">compare</span>
+              <span class="capability-tag">summarize</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="interaction-panel">
+        <div class="interaction-header">
+          <h2>Agent Interaction</h2>
+          <div class="budget-display">
+            Budget: <span id="budgetUsed">$0.00</span> / <span id="budgetTotal">$0.10</span>
+          </div>
+        </div>
+
+        <div class="messages" id="messages">
+          <div class="empty-state">
+            Select an agent and send a message to get started.
+          </div>
+        </div>
+
+        <div class="input-section">
+          <div class="method-select" id="methodSelect">
+            <button class="method-btn active" data-method="scout.search">Search</button>
+            <button class="method-btn" data-method="scout.monitor">Monitor</button>
+          </div>
+          <div class="query-input">
+            <textarea id="queryInput" placeholder="Enter your query..."></textarea>
+            <button class="send-btn" id="sendBtn">Send</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let state = {
+      agent: 'scout',
+      method: 'scout.search',
+      messages: [],
+      loading: false,
+      totalCost: 0
+    };
+
+    // DOM elements
+    const apiEndpoint = document.getElementById('apiEndpoint');
+    const apiKey = document.getElementById('apiKey');
+    const modelSelect = document.getElementById('modelSelect');
+    const customModel = document.getElementById('customModel');
+    const budgetLimit = document.getElementById('budgetLimit');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const messages = document.getElementById('messages');
+    const methodSelect = document.getElementById('methodSelect');
+    const queryInput = document.getElementById('queryInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const budgetUsed = document.getElementById('budgetUsed');
+    const budgetTotal = document.getElementById('budgetTotal');
+
+    // Agent methods
+    const agentMethods = {
+      scout: ['scout.search', 'scout.monitor'],
+      analyst: ['analyst.analyze', 'analyst.compare', 'analyst.summarize']
+    };
+
+    // Method labels
+    const methodLabels = {
+      'scout.search': 'Search',
+      'scout.monitor': 'Monitor',
+      'analyst.analyze': 'Analyze',
+      'analyst.compare': 'Compare',
+      'analyst.summarize': 'Summarize'
+    };
+
+    // Initialize
+    function init() {
+      // Load saved config
+      const savedKey = localStorage.getItem('ain_api_key');
+      const savedEndpoint = localStorage.getItem('ain_endpoint');
+      if (savedKey) apiKey.value = savedKey;
+      if (savedEndpoint) apiEndpoint.value = savedEndpoint;
+
+      // Save config on change
+      apiKey.addEventListener('change', () => localStorage.setItem('ain_api_key', apiKey.value));
+      apiEndpoint.addEventListener('change', () => localStorage.setItem('ain_endpoint', apiEndpoint.value));
+
+      // Agent selection
+      document.querySelectorAll('.agent-card').forEach(card => {
+        card.addEventListener('click', () => selectAgent(card.dataset.agent));
+      });
+
+      // Method selection
+      methodSelect.addEventListener('click', (e) => {
+        if (e.target.classList.contains('method-btn')) {
+          selectMethod(e.target.dataset.method);
+        }
+      });
+
+      // Send button
+      sendBtn.addEventListener('click', sendMessage);
+      queryInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.ctrlKey) sendMessage();
+      });
+
+      // Budget display
+      budgetLimit.addEventListener('change', () => {
+        budgetTotal.textContent = '$' + parseFloat(budgetLimit.value).toFixed(2);
+      });
+
+      // Model selection - show custom input when "Custom Model..." selected
+      modelSelect.addEventListener('change', () => {
+        if (modelSelect.value === 'custom') {
+          customModel.style.display = 'block';
+          customModel.focus();
+        } else {
+          customModel.style.display = 'none';
+        }
+      });
+
+      // Load saved custom model
+      const savedCustomModel = localStorage.getItem('ain_custom_model');
+      if (savedCustomModel) customModel.value = savedCustomModel;
+      customModel.addEventListener('change', () => {
+        localStorage.setItem('ain_custom_model', customModel.value);
+      });
+
+      // Check connection
+      checkConnection();
+      setInterval(checkConnection, 30000);
+    }
+
+    function selectAgent(agent) {
+      state.agent = agent;
+      document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('active'));
+      document.querySelector(`[data-agent="${agent}"]`).classList.add('active');
+
+      // Update methods
+      const methods = agentMethods[agent];
+      methodSelect.innerHTML = methods.map(m =>
+        `<button class="method-btn${m === methods[0] ? ' active' : ''}" data-method="${m}">${methodLabels[m]}</button>`
+      ).join('');
+      state.method = methods[0];
+    }
+
+    function selectMethod(method) {
+      state.method = method;
+      document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector(`[data-method="${method}"]`).classList.add('active');
+    }
+
+    async function checkConnection() {
+      try {
+        const res = await fetch(`${apiEndpoint.value}/health`);
+        if (res.ok) {
+          statusDot.classList.add('connected');
+          statusText.textContent = 'Connected';
+        } else {
+          throw new Error('Not OK');
+        }
+      } catch {
+        statusDot.classList.remove('connected');
+        statusText.textContent = 'Disconnected';
+      }
+    }
+
+    function addMessage(type, agent, content) {
+      state.messages.push({ type, agent, content, time: new Date() });
+      renderMessages();
+    }
+
+    function renderMessages() {
+      if (state.messages.length === 0) {
+        messages.innerHTML = '<div class="empty-state">Select an agent and send a message to get started.</div>';
+        return;
+      }
+
+      messages.innerHTML = state.messages.map(msg => `
+        <div class="message ${msg.type}">
+          <div class="message-header">
+            <span>${msg.agent}</span>
+            <span>${msg.time.toLocaleTimeString()}</span>
+          </div>
+          <div class="message-content">${formatContent(msg.content)}</div>
+        </div>
+      `).join('');
+
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function formatContent(content) {
+      if (typeof content === 'object') {
+        return `<div class="json-result">${JSON.stringify(content, null, 2)}</div>`;
+      }
+      return escapeHtml(content);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function sendMessage() {
+      const query = queryInput.value.trim();
+      if (!query || state.loading) return;
+
+      if (!apiKey.value) {
+        alert('Please enter your OpenRouter API key');
+        return;
+      }
+
+      state.loading = true;
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<span class="loading"></span>';
+
+      // Add user message
+      addMessage('user', 'You', `${methodLabels[state.method]}: ${query}`);
+
+      try {
+        // Build params based on method
+        let params;
+        if (state.method.includes('search')) {
+          params = { query };
+        } else if (state.method.includes('monitor')) {
+          params = { source: query };
+        } else if (state.method.includes('analyze')) {
+          params = { data: tryParseJSON(query), context: 'Provide detailed analysis' };
+        } else if (state.method.includes('summarize')) {
+          params = { data: tryParseJSON(query) };
+        } else if (state.method.includes('compare')) {
+          params = { data: tryParseJSON(query) };
+        }
+
+        const res = await fetch(`${apiEndpoint.value}/a2a`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-openrouter-key': apiKey.value,
+            'x-openrouter-model': modelSelect.value === 'custom' ? customModel.value : modelSelect.value,
+            'x-budget-limit': budgetLimit.value
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: Date.now().toString(),
+            method: state.method,
+            params
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+          addMessage('error', 'Error', data.error.message);
+        } else {
+          addMessage('agent', state.agent.charAt(0).toUpperCase() + state.agent.slice(1) + ' Agent', data.result);
+        }
+
+      } catch (err) {
+        addMessage('error', 'Error', err.message);
+      }
+
+      state.loading = false;
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Send';
+      queryInput.value = '';
+    }
+
+    function tryParseJSON(str) {
+      try {
+        return JSON.parse(str);
+      } catch {
+        return { text: str };
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

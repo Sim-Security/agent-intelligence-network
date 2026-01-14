@@ -1,0 +1,40 @@
+{
+  "name": "agent-intelligence-network",
+  "version": "0.1.0",
+  "description": "Zero-cost, BYOK agent-to-agent framework",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter '*' build",
+    "test": "bun test",
+    "lint": "bunx @biomejs/biome lint .",
+    "format": "bunx @biomejs/biome format --write .",
+    "typecheck": "bun run --filter '*' typecheck"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "@types/bun": "latest",
+    "typescript": "^5.7.0"
+  },
+  "author": "Adam",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adam/agent-intelligence-network"
+  },
+  "keywords": [
+    "a2a",
+    "agent-to-agent",
+    "ai-agents",
+    "multi-agent",
+    "byok",
+    "llm"
+  ],
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

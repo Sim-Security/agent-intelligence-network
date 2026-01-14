@@ -1,0 +1,13 @@
+{
+  "name": "@ain/web",
+  "version": "0.1.0",
+  "description": "Web dashboard for Agent Intelligence Network",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch serve.ts",
+    "start": "bun serve.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

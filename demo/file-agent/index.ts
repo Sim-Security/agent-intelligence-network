@@ -3,20 +3,43 @@
  *
  * This agent actually reads and analyzes files on disk.
  * No LLM needed for basic operations - it does real work.
+ *
+ * SSE endpoint at /events for real-time activity streaming.
  */
 
 import { readdir, stat } from "node:fs/promises";
-import { join, extname } from "node:path";
+import { join, extname, basename } from "node:path";
 
 const PORT = 4001;
+const AGENT_ID = "file-agent";
+const AGENT_NAME = "File Agent";
+
+// SSE clients
+const sseClients = new Set<ReadableStreamDefaultController>();
+
+// Emit event to all SSE clients
+function emit(event: string, data: any) {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const controller of sseClients) {
+    try {
+      controller.enqueue(new TextEncoder().encode(payload));
+    } catch {
+      sseClients.delete(controller);
+    }
+  }
+  // Also log to console with color
+  const timestamp = new Date().toISOString().split("T")[1].slice(0, 12);
+  console.log(`\x1b[36m[${timestamp}]\x1b[0m \x1b[33m${event}\x1b[0m`, JSON.stringify(data).slice(0, 100));
+}
 
 // Agent Card
 const agentCard = {
-  id: "file-agent",
-  name: "File Agent",
+  id: AGENT_ID,
+  name: AGENT_NAME,
   description: "Reads and analyzes files - does REAL work, not just LLM calls",
   version: "1.0.0",
   endpoint: `http://localhost:${PORT}/a2a`,
+  eventsEndpoint: `http://localhost:${PORT}/events`,
   capabilities: [
     {
       name: "list",
@@ -56,11 +79,13 @@ const agentCard = {
 
 // Real file operations
 async function listFiles(dirPath: string): Promise<any> {
+  emit("processing", { step: "listing", path: dirPath });
+
   try {
     const entries = await readdir(dirPath, { withFileTypes: true });
     const files = [];
 
-    for (const entry of entries.slice(0, 50)) { // Limit for safety
+    for (const entry of entries.slice(0, 50)) {
       const fullPath = join(dirPath, entry.name);
       const stats = await stat(fullPath).catch(() => null);
 
@@ -71,6 +96,8 @@ async function listFiles(dirPath: string): Promise<any> {
         extension: entry.isFile() ? extname(entry.name) : null
       });
     }
+
+    emit("processing", { step: "complete", fileCount: files.length });
 
     return {
       path: dirPath,
@@ -83,6 +110,8 @@ async function listFiles(dirPath: string): Promise<any> {
 }
 
 async function readFile(filePath: string): Promise<any> {
+  emit("processing", { step: "reading", file: basename(filePath) });
+
   try {
     const file = Bun.file(filePath);
     const exists = await file.exists();
@@ -94,6 +123,8 @@ async function readFile(filePath: string): Promise<any> {
     const stats = await stat(filePath);
     const content = await file.text();
     const lines = content.split("\n");
+
+    emit("processing", { step: "complete", lines: lines.length, size: stats.size });
 
     return {
       path: filePath,
@@ -108,6 +139,8 @@ async function readFile(filePath: string): Promise<any> {
 }
 
 async function analyzeCodebase(dirPath: string): Promise<any> {
+  emit("processing", { step: "starting_analysis", path: basename(dirPath) });
+
   const stats = {
     totalFiles: 0,
     totalLines: 0,
@@ -116,12 +149,13 @@ async function analyzeCodebase(dirPath: string): Promise<any> {
     largestFiles: [] as { path: string; lines: number; size: number }[]
   };
 
+  let lastEmit = Date.now();
+
   async function walk(dir: string) {
     try {
       const entries = await readdir(dir, { withFileTypes: true });
 
       for (const entry of entries) {
-        // Skip hidden and node_modules
         if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
 
         const fullPath = join(dir, entry.name);
@@ -151,6 +185,12 @@ async function analyzeCodebase(dirPath: string): Promise<any> {
           stats.byExtension[ext].size += fileStats.size;
 
           stats.largestFiles.push({ path: fullPath, lines: lineCount, size: fileStats.size });
+
+          // Emit progress every 100ms
+          if (Date.now() - lastEmit > 100) {
+            emit("processing", { step: "scanning", filesFound: stats.totalFiles, currentDir: basename(dir) });
+            lastEmit = Date.now();
+          }
         }
       }
     } catch {}
@@ -158,9 +198,10 @@ async function analyzeCodebase(dirPath: string): Promise<any> {
 
   await walk(dirPath);
 
-  // Sort and limit largest files
   stats.largestFiles.sort((a, b) => b.lines - a.lines);
   stats.largestFiles = stats.largestFiles.slice(0, 5);
+
+  emit("processing", { step: "complete", totalFiles: stats.totalFiles, totalLines: stats.totalLines });
 
   return {
     path: dirPath,
@@ -179,7 +220,12 @@ async function handleA2A(request: Request): Promise<Response> {
   const body = await request.json() as any;
   const { id, method, params } = body;
 
-  console.log(`[File Agent] ${method} - ${params?.path ?? "no path"}`);
+  // Emit request received
+  emit("request", {
+    id,
+    method,
+    params: { path: params?.path ? basename(params.path) : "none" }
+  });
 
   let result;
 
@@ -200,12 +246,20 @@ async function handleA2A(request: Request): Promise<Response> {
       break;
 
     default:
+      emit("error", { id, message: `Unknown method: ${method}` });
       return Response.json({
         jsonrpc: "2.0",
         id,
         error: { code: -32601, message: `Unknown method: ${method}` }
       });
   }
+
+  // Emit response
+  emit("response", {
+    id,
+    success: !result.error,
+    summary: result.summary ?? (result.error ? { error: result.error } : { count: result.count ?? result.lines })
+  });
 
   return Response.json({
     jsonrpc: "2.0",
@@ -231,6 +285,30 @@ Bun.serve({
       });
     }
 
+    // SSE Events endpoint
+    if (url.pathname === "/events") {
+      const stream = new ReadableStream({
+        start(controller) {
+          sseClients.add(controller);
+          // Send initial connection event
+          const payload = `event: connected\ndata: ${JSON.stringify({ agent: AGENT_ID, name: AGENT_NAME })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(payload));
+        },
+        cancel(controller) {
+          sseClients.delete(controller);
+        }
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+          "Access-Control-Allow-Origin": "*"
+        }
+      });
+    }
+
     // Agent Card
     if (url.pathname === "/.well-known/agent.json" || url.pathname === "/agent-card") {
       return Response.json(agentCard, {
@@ -252,13 +330,16 @@ Bun.serve({
 
     // Health
     if (url.pathname === "/" || url.pathname === "/health") {
-      return Response.json({ status: "ok", agent: "file-agent" });
+      return Response.json({ status: "ok", agent: AGENT_ID, sseClients: sseClients.size });
     }
 
     return Response.json({ error: "Not found" }, { status: 404 });
   }
 });
 
-console.log(`📁 File Agent running at http://localhost:${PORT}`);
+console.log(`\x1b[36m📁 File Agent\x1b[0m running at http://localhost:${PORT}`);
 console.log(`   Agent Card: http://localhost:${PORT}/.well-known/agent.json`);
+console.log(`   \x1b[33mSSE Events: http://localhost:${PORT}/events\x1b[0m`);
 console.log(`   NOTE: This agent does REAL work - no LLM needed!`);
+console.log();
+console.log(`\x1b[2m   Waiting for A2A requests...\x1b[0m`);

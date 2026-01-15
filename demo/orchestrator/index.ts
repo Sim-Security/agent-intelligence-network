@@ -146,7 +146,7 @@ async function orchestrate(query: string, apiKey: string, model: string) {
 // Main
 async function main() {
   const apiKey = process.env.OPENROUTER_KEY;
-  const model = process.env.MODEL ?? "xiaomi/mimo-v2-flash:free";
+  const model = process.env.MODEL ?? "x-ai/grok-4.1-fast";
   const query = process.argv[2] ?? "What are the latest developments in AI agents?";
 
   if (!apiKey) {

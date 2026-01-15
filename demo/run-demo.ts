@@ -119,7 +119,7 @@ async function sendA2A(agentId: string, method: string, params: any, apiKey: str
 // Main demo
 async function runDemo() {
   const apiKey = process.env.OPENROUTER_KEY;
-  const model = process.env.MODEL ?? "xiaomi/mimo-v2-flash:free";
+  const model = process.env.MODEL ?? "x-ai/grok-4.1-fast";
   const query = process.argv[2] ?? "What are the benefits of multi-agent AI systems?";
 
   console.clear();

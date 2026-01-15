@@ -41,7 +41,7 @@ bun run dev
 curl -X POST http://localhost:8787/a2a \
   -H "Content-Type: application/json" \
   -H "x-openrouter-key: YOUR_OPENROUTER_KEY" \
-  -H "x-openrouter-model: anthropic/claude-3-haiku" \
+  -H "x-openrouter-model: x-ai/grok-4.1-fast" \
   -d '{
     "jsonrpc": "2.0",
     "id": "1",
@@ -84,7 +84,7 @@ Pass your API keys via headers (never stored):
 | Header | Provider |
 |--------|----------|
 | `x-openrouter-key` | OpenRouter (access to all models) |
-| `x-openrouter-model` | Model to use (e.g., `anthropic/claude-3-haiku`, `openai/gpt-4o-mini`) |
+| `x-openrouter-model` | Model to use (e.g., `x-ai/grok-4.1-fast`, `openai/gpt-4o-mini`) |
 | `x-anthropic-key` | Anthropic (Claude) |
 | `x-openai-key` | OpenAI (GPT) |
 | `x-ollama-url` | Ollama (local, e.g., `http://localhost:11434`) |

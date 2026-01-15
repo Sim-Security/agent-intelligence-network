@@ -50,7 +50,7 @@ function buildProviderConfig(keys: BYOKHeaders): ProviderConfig | null {
     return {
       type: 'openrouter',
       apiKey: keys['x-openrouter-key'],
-      model: keys['x-openrouter-model'] ?? 'anthropic/claude-3-haiku', // Default to cheap Claude
+      model: keys['x-openrouter-model'] ?? 'x-ai/grok-4.1-fast', // Default model
     };
   }
   if (keys['x-anthropic-key']) {

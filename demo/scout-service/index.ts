@@ -67,7 +67,7 @@ async function callLLM(apiKey: string, model: string, system: string, userMessag
 // Handle A2A requests
 async function handleA2A(request: Request): Promise<Response> {
   const apiKey = request.headers.get("x-openrouter-key");
-  const model = request.headers.get("x-openrouter-model") ?? "x-ai/grok-4.1-fast";
+  const model = request.headers.get("x-openrouter-model") ?? "xiaomi/mimo-v2-flash:free";
 
   if (!apiKey) {
     return Response.json({
